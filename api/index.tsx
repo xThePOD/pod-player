@@ -11,7 +11,7 @@ export const app = new Frog({
 }).use(
   neynar({
     apiKey: '0D6B6425-87D9-4548-95A2-36D107C12421',
-    features: ['interactor'],
+    features: ['interactor', 'cast'],
   })
 );
 
@@ -66,7 +66,7 @@ app.frame('/', (c) => {
     intents: 
       isSharing
         ? [
-            <Button.Redirect location={`https://warpcast.com/~/compose?text=${encodeURIComponent(message)}`}>Post to Farcaster</Button.Redirect>,
+            <Button value="post_to_farcaster" action="cast">Post to Farcaster</Button>, // Normal button for posting
             <Button value="apples">Apples</Button>,
             <Button value="oranges">Oranges</Button>,
             <Button.Reset>Reset</Button.Reset>,
@@ -84,6 +84,7 @@ app.frame('/', (c) => {
             <Button value="bananas">Bananas</Button>,
             <Button.Reset>Cancel</Button.Reset>,
           ],
+    ...(isSharing && { action: 'cast', cast: message }), // Action to cast the message
   });
 });
 
