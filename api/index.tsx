@@ -11,40 +11,28 @@ export const app = new Frog({
 }).use(
   neynar({
     apiKey: '0D6B6425-87D9-4548-95A2-36D107C12421',
-    features: ['interactor', 'cast'],
+    features: ['interactor'],
   })
 );
 
-async function castMessage(message: string, c: any) {
-  try {
-    await c.neynar.castText(message);
-    return 'Cast posted successfully!';
-  } catch (error) {
-    console.error('Error posting cast:', error);
-    return 'Error posting cast.';
-  }
-}
-
-app.frame('/', async (c) => {
-  const { buttonValue, status } = c;
+app.frame('/', (c) => {
+  const { buttonValue } = c;
   
-  let message = '';
-  let castResult = '';
+  const fruitSelected = buttonValue && ['apples', 'oranges', 'bananas'].includes(buttonValue);
+  const isSharing = buttonValue && buttonValue.startsWith('share_');
 
-  if (buttonValue && buttonValue.startsWith('share_')) {
+  let message = '';
+  if (isSharing) {
     const selectedFruit = buttonValue.split('_')[1];
     message = `I like ${selectedFruit.toUpperCase()}! Follow me, the creator!`;
-    castResult = await castMessage(message, c);
   }
-
-  const fruitSelected = buttonValue && ['apples', 'oranges', 'bananas'].includes(buttonValue);
 
   return c.res({
     image: (
       <div
         style={{
           alignItems: 'center',
-          background: status === 'response' ? 'linear-gradient(to right, #432889, #17101F)' : 'black',
+          background: 'linear-gradient(to right, #432889, #17101F)',
           backgroundSize: '100% 100%',
           display: 'flex',
           flexDirection: 'column',
@@ -67,16 +55,23 @@ app.frame('/', async (c) => {
             whiteSpace: 'pre-wrap',
           }}
         >
-          {fruitSelected
-            ? `Nice choice. ${buttonValue.toUpperCase()}!!`
-            : castResult
-            ? castResult
+          {isSharing
+            ? `Ready to share: ${message}`
+            : fruitSelected
+            ? `Nice choice. ${buttonValue!.toUpperCase()}!!`
             : 'Welcome! Select your favorite fruit!'}
         </div>
       </div>
     ),
     intents: 
-      fruitSelected
+      isSharing
+        ? [
+            <Button.Redirect location={`https://warpcast.com/~/compose?text=${encodeURIComponent(message)}`}>Post to Farcaster</Button.Redirect>,
+            <Button value="apples">Apples</Button>,
+            <Button value="oranges">Oranges</Button>,
+            <Button.Reset>Reset</Button.Reset>,
+          ]
+        : fruitSelected
         ? [
             <Button value={`share_${buttonValue}`}>Share on Farcaster</Button>,
             <Button value="apples">Apples</Button>,
@@ -87,7 +82,7 @@ app.frame('/', async (c) => {
             <Button value="apples">Apples</Button>,
             <Button value="oranges">Oranges</Button>,
             <Button value="bananas">Bananas</Button>,
-            castResult ? <Button.Reset>Reset</Button.Reset> : <Button.Reset>Cancel</Button.Reset>,
+            <Button.Reset>Cancel</Button.Reset>,
           ],
   });
 });
