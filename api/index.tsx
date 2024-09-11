@@ -1,39 +1,99 @@
-/** @jsxImportSource frog/jsx */
 import { Button, Frog } from 'frog';
+import { devtools } from 'frog/dev';
+import { serveStatic } from 'frog/serve-static';
 import { handle } from 'frog/vercel';
 import { neynar } from 'frog/middlewares';
-import axios from 'axios';
 
-const app = new Frog({
+export const app = new Frog({
+  assetsPath: '/',
   basePath: '/api',
-  imageOptions: { width: 1200, height: 630 },
-  title: 'Music NFT Viewer',
+  title: 'Frog Frame with Sharing',
 }).use(
   neynar({
-    apiKey: 'NEYNAR_FROG_FM',
+    apiKey: '0D6B6425-87D9-4548-95A2-36D107C12421',
     features: ['interactor', 'cast'],
   })
 );
 
-app.frame('/', (c) => {
+async function castMessage(message: string, c: any) {
+  try {
+    await c.neynar.castText(message);
+    return 'Cast posted successfully!';
+  } catch (error) {
+    console.error('Error posting cast:', error);
+    return 'Error posting cast.';
+  }
+}
+
+app.frame('/', async (c) => {
+  const { buttonValue, status } = c;
+  
+  let message = '';
+  let castResult = '';
+
+  if (buttonValue && buttonValue.startsWith('share_')) {
+    const selectedFruit = buttonValue.split('_')[1];
+    message = `I like ${selectedFruit.toUpperCase()}! Follow me, the creator!`;
+    castResult = await castMessage(message, c);
+  }
+
+  const fruitSelected = buttonValue && ['apples', 'oranges', 'bananas'].includes(buttonValue);
+
   return c.res({
-    image: 'YOUR_IMAGE_URL',
-    imageAspectRatio: '1.91:1',
-    intents: [<Button action="/view-nft">View Music NFT</Button>],
+    image: (
+      <div
+        style={{
+          alignItems: 'center',
+          background: status === 'response' ? 'linear-gradient(to right, #432889, #17101F)' : 'black',
+          backgroundSize: '100% 100%',
+          display: 'flex',
+          flexDirection: 'column',
+          flexWrap: 'nowrap',
+          height: '100%',
+          justifyContent: 'center',
+          textAlign: 'center',
+          width: '100%',
+        }}
+      >
+        <div
+          style={{
+            color: 'white',
+            fontSize: 60,
+            fontStyle: 'normal',
+            letterSpacing: '-0.025em',
+            lineHeight: 1.4,
+            marginTop: 30,
+            padding: '0 120px',
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {fruitSelected
+            ? `Nice choice. ${buttonValue.toUpperCase()}!!`
+            : castResult
+            ? castResult
+            : 'Welcome! Select your favorite fruit!'}
+        </div>
+      </div>
+    ),
+    intents: 
+      fruitSelected
+        ? [
+            <Button value={`share_${buttonValue}`}>Share on Farcaster</Button>,
+            <Button value="apples">Apples</Button>,
+            <Button value="oranges">Oranges</Button>,
+            <Button value="bananas">Bananas</Button>,
+          ]
+        : [
+            <Button value="apples">Apples</Button>,
+            <Button value="oranges">Oranges</Button>,
+            <Button value="bananas">Bananas</Button>,
+            castResult ? <Button.Reset>Reset</Button.Reset> : <Button.Reset>Cancel</Button.Reset>,
+          ],
   });
 });
 
-app.frame('/view-nft', async (c) => {
-  const nftMetadata = await axios.get('YOUR_NFT_METADATA_URL');
-  return c.res({
-    image: nftMetadata.data.image,
-    imageAspectRatio: '1.91:1',
-    intents: [<Button action="/">Back</Button>],
-  });
-});
+const isProduction = process.env.NODE_ENV === 'production';
+devtools(app, isProduction ? { assetsPath: '/.frog' } : { serveStatic });
 
 export const GET = handle(app);
 export const POST = handle(app);
-
-// Ensure this line is present to export the app object
-export default app;
